@@ -1,4 +1,4 @@
-import {loadStdlib} from '@reach-sh/stdlib';
+import { loadStdlib, ask } from '@reach-sh/stdlib';
 import * as backend from './build/index.main.mjs';
 const stdlib = loadStdlib(process.env);
 
@@ -13,18 +13,41 @@ console.log('Launching...');
 const ctcAlice = accAlice.contract(backend);
 const ctcBob = accBob.contract(backend, ctcAlice.getInfo());
 
-const choiceArray = ["I'm not here", "I'm still here"]
+//const choiceArray = ["I'm not here", "I'm still here"]
 
 const getBalance = async (who) => stdlib.formatCurrency((await stdlib.balanceOf(who)));
 
 console.log(`Alice's account balance before is: ${await getBalance(accAlice)}`);
 console.log(`Bob's account balance before is: ${await getBalance(accBob)}`);
 
-const Shared = () =>({
-  showTime: (t) =>{
+const Shared = (who) => ({
+  showTime: (t) => {
     console.log(`Time is ${t}`)
+  },
+  seeChoice: async (c) => {
+    if (c) {
+      console.log('Alice is still here!')
+    }
+    else console.log('Alice is not here!')
+  },
+  finalOutcome: async (final) => {
+    if (final == 1) {
+      console.log("Time's UP!");
+      console.log("I'm here");
+    }
+    else {
+      console.log("Time's UP!");
+      console.log("I'm not here");
+    }
+  },
+  balance: async () => [
+    console.log(`Alice's token balance is ${await getBalance(accAlice)}`),
+    console.log(`Bob's token balance is ${await getBalance(accBob)}`)
+  ],
+  setTimeout: () => {
+    console.log(`${who} observed a timeout`);
   }
-})
+});
 
 console.log('Starting backends...');
 await Promise.all([

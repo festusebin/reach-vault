@@ -3,22 +3,35 @@
 const COUNTDOWN = 20;
 
 const Shared = {
-  showTime: Fun([UInt], Null)
-}
+  showTime: Fun([UInt], Null),
+  seeChoice: Fun([Bool], Null),
+  finalOutcome: Fun([Bool], Null),
+  setTimeout: Fun([], Null)
+};
 
 export const main = Reach.App(() => {
   const A = Participant('Alice', {
     ...Shared,
     // Specify Alice's interact interface here
     inherit: UInt,
-    getChoice: Fun([], Bool),
+    getPrice: Fun([], UInt),
+    getAttendance: Fun([], Bool),
+    setDeadline: Fun([], Bool),
+    balance: Fun([Address], Null),
   });
   const B = Participant('Bob', {
     ...Shared,
     // Specify Bob's interact interface here
     acceptTerms: Fun([UInt], Bool),
+    seeBalance: Fun([Bool], Null),
   });
   init();
+
+  const setTimeout = () => {
+    each([A, B], () => {
+      interact.setTimeout();
+    });
+  };
   // The first one to publish deploys the contract
   A.only(() => {
     const value = declassify(interact.inherit);
