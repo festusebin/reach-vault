@@ -1,9 +1,6 @@
-'reach 0.1';
-
-const COUNTDOWN = 20;
+"reach 0.1";
 
 const Shared = {
-  showTime: Fun([UInt], Null),
   seeChoice: Fun([Bool], Null),
   finalOutcome: Fun([Bool], Null),
   setTimeout: Fun([], Null)
@@ -12,18 +9,15 @@ const Shared = {
 export const main = Reach.App(() => {
   const A = Participant('Alice', {
     ...Shared,
-    // Specify Alice's interact interface here
-    inherit: UInt,
     getPrice: Fun([], UInt),
     getAttendance: Fun([], Bool),
-    setDeadline: Fun([], Bool),
-    balance: Fun([Address], Null),
+    setDeadline: Fun([], UInt),
+    balanceAlice: Fun([Address], Null),
   });
   const B = Participant('Bob', {
     ...Shared,
-    // Specify Bob's interact interface here
-    acceptTerms: Fun([UInt], Bool),
-    seeBalance: Fun([Bool], Null),
+    acceptTerms: Fun([], Bool),
+    balanceBob: Fun([Bool], Null),
   });
   init();
 
@@ -32,34 +26,72 @@ export const main = Reach.App(() => {
       interact.setTimeout();
     });
   };
-  // The first one to publish deploys the contract
+
   A.only(() => {
-    const value = declassify(interact.inherit);
+    const deadline = declassify(interact.setDeadline());
+    const price = declassify(interact.getPrice());
   })
-  A.publish(value)
-    .pay(value);
+  A.publish(price, deadline);
   commit();
-  // The second one to publish always attaches
+  A.pay(price);
+  commit();
+
   B.only(() => {
-    const terms = declassify(interact.acceptTerms(value));
+    const terms = declassify(interact.acceptTerms());
   })
-  B.publish(terms);
-  commit();
-
-  each([A, B], () => {
-    interact.showTime(COUNTDOWN)
-  })
-
+  B.publish(terms); 
   A.only(() => {
-    const stillHere = declassify(interact.getChoice());
+   interact.balanceAlice(A);
   })
-  A.publish(stillHere)
-  if(stillHere){
-    transfer(value).to(A);
-  }else{
-    transfer(value).to(B);
+
+  const countDown = lastConsensusTime() + deadline;
+
+  var [here] = [false];
+  invariant(balance() == balance());
+  while ( countDown >= lastConsensusTime()) {
+    commit();
+    A.only(() => {
+     const register = declassify(interact.getAttendance());
+    });
+    A.publish(register)
+    .timeout(relativeTime(countDown), () => closeTo(B, setTimeout));
+    commit();
+    each([A, B], () => {
+      interact.seeChoice(register);
+    });
+    B.publish();
+    [here] = [register];
+    continue;
   }
-  commit()
-  // write your program here
-  exit();
+  if (lastConsensusTime() >= countDown && here){
+    transfer(balance()).to(A)
+    each([A, B], () => {
+      interact.finalOutcome(true);
+
+    });
+    A.only(() => {
+      interact.balanceAlice(A)
+    });
+    B.only(() => {
+      interact.balanceBob(true)
+    });
+
+  }
+  else{
+    transfer(balance()).to(B)
+    each([A, B], () => {
+      interact.finalOutcome(false);
+    
+    
+    });
+
+    A.only(() => {
+      interact.balanceAlice(A)
+    });
+    B.only(() => {
+      interact.balanceBob(false)
+    });
+  }
+
+  commit();
 });
